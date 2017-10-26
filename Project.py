@@ -15,6 +15,15 @@ class ForVisitor(NodeVisitor):
     def visit_For(self, node):
         self.nodes.append(list(node.children()))
         node.show()
+class LoopVisitor(NodeVisitor):
+    def __init__(self):
+        self.nodes = []
+    def visit_For(self, node):
+        self.nodes.append(list(node.children()))
+        node.show()
+    def visit_While(self, node):
+        self.nodes.append(list(node.children()))
+        node.show()
 
 class ConstantVisitor(NodeVisitor):
     def __init__(self):
@@ -29,9 +38,10 @@ if __name__ == '__main__':
 
     for_visit = ForVisitor()
     while_visit = WhileVisitor()
-    n_vist = NodeVisitor()
-    #n_vist.visit(ast)
-    for_visit.visit(ast)
-    while_visit.visit(ast)
+    n_vist = LoopVisitor()
+    n_vist.visit(ast)
+    #for_visit.visit(ast)
+    #while_visit.visit(ast)
+
 
     exit(0)
