@@ -28,8 +28,10 @@ if __name__ == '__main__':
     ast = parse_file('./tests/c_files/minic.c')
 
     for_visit = ForVisitor()
+    while_visit = WhileVisitor()
     n_vist = NodeVisitor()
     #n_vist.visit(ast)
     for_visit.visit(ast)
+    while_visit.visit(ast)
 
     exit(0)
