@@ -49,7 +49,7 @@ def nomatch(y):
     if y is None:
         return None
     else:
-        print "No match found for class %r" % y.__class__
+        print ("No match found for class %r" % y.__class__)
         y.show()
         raise TypeError
 
@@ -61,7 +61,7 @@ def v(orig):
             or isinstance(orig, bool) or orig is None:
         return orig
     else:
-        print "Unexpected type for value %r" % orig
+        print ("Unexpected type for value %r" % orig)
         raise TypeError
 
 

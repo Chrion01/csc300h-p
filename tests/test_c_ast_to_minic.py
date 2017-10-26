@@ -22,7 +22,7 @@ class TestConversion1(unittest.TestCase):
         self.failUnless(isinstance(mss_body.block_items[2], mast.Decl))
         self.failUnless(isinstance(mss_body.block_items[3], mast.For))
         forstmt = mss_body.block_items[3]
-        print forstmt.next
+        print (forstmt.next)
         self.assertTrue(isinstance(forstmt.next, mast.Assignment))
         self.failUnless(isinstance(mss_body.block_items[4], mast.Return))
 
