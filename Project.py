@@ -57,11 +57,23 @@ class ConstantVisitor(NodeVisitor):
 
 class LoopReach(NodeVisitor):
 
-    def __init__(self, vars):
+    def __init__(self, vars, nodes):
         self.target_vars = vars
-        self.expressions = []
-        self.expressions_after = []
-        self.loop_reached = False
+        self.loops = nodes
+        self.expressions = [[]] * len(nodes)
+        self.expressions_after = [[]] * len(nodes)
+        self.loop_reached = [False] * len(nodes)
+        self.index = 0
+
+    def add_exp(self, expression):
+        assert (isinstance(expression, pc.Decl))
+        name = expression.name
+        temp = []
+        for exp in self.expressions[self.index]:
+            if not exp.name == name:
+                temp.append(exp)
+        temp.append(expression)
+        self.expressions[self.index] = temp[:]
 
     # def visit_TypeDecl(self, decl):
     #     if decl.declname in self.target_vars:
@@ -85,20 +97,43 @@ class LoopReach(NodeVisitor):
             self.expressions_after.append(decl)
             decl.show()
 
+class FuncVisitor(NodeVisitor):
+
+    def __init__(self):
+        self.functions = []
+        self.function_nodes = []
+        self.function_loop_variables = []
+        self.function_reach_live = []
+
+    def visit_FuncDef(self, FuncDecl):
+        self.functions.append([FuncDecl.decl.name,FuncDecl])
+
+        lv = LoopVisitor()
+        lv.visit(FuncDecl)
+        self.function_nodes.append(lv.nodes)
+        self.function_loop_variables.append(lv.loop_vars)
+
+        rl = LoopReach(lv.loop_vars, lv.nodes)
+        rl.visit(FuncDecl)
+        combination = [rl.expressions, rl.expressions_after]
+        self.function_reach_live.append(combination)
+
+
+
 if __name__ == '__main__':
     ast = parse_file('./tests/c_files/minic.c')
 
-    n_vist = LoopVisitor()
+    n_vist = FuncVisitor()
     n_vist.visit(ast)
+    print("functions: {}".format(n_vist.functions))
+    print("loops    : {}".format(n_vist.function_nodes))
+    print("loop vars: {}".format(n_vist.function_loop_variables))
+    print("loop reach vars: {}".format(n_vist.function_reach_live))
 
-    print("loop vars: {}".format(n_vist.loop_vars))
-    print("loops    : {}".format(n_vist.nodes))
+    # loop_var_reach = LoopReach(n_vist.loop_vars, n_vist.nodes)
+    # loop_var_reach.visit(ast)
+    #
 
-    loop_var_reach = LoopReach(n_vist.loop_vars)
-    loop_var_reach.visit(ast)
-
-    print("loop reach vars: {}".format(loop_var_reach.expressions))
-    print("post vars: {}".format(loop_var_reach.expressions_after))
 
     #loop_var_reach.expressions[0].show()
 
