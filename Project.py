@@ -14,13 +14,13 @@ class LoopVisitor(NodeVisitor):
         self.nodes.append(For)
         b_vist = BodyVisitor()
         b_vist.visit(For)
-        self.loop_vars.append(b_vist.values)
+        self.loop_vars.append(b_vist.values[:])
 
     def visit_While(self, While):
         self.nodes.append(While)
         b_vist = BodyVisitor()
         b_vist.visit(While)
-        self.loop_vars.append(b_vist.values)
+        self.loop_vars.append(b_vist.values[:])
 
 class BodyVisitor(NodeVisitor):
 
@@ -47,55 +47,88 @@ class BodyVisitor(NodeVisitor):
         if not decl.name in self.decls:
             self.decls.append(decl.name)
 
-class ConstantVisitor(NodeVisitor):
-    def __init__(self):
-        self.values = []
-
-    def visit_Constant(self, node):
-        print('Const\n')
-        self.values.append(node.value)
+# class ConstantVisitor(NodeVisitor):
+#     def __init__(self):
+#         self.values = []
+#
+#     def visit_Constant(self, node):
+#         print('Const\n')
+#         self.values.append(node.value)
 
 class LoopReach(NodeVisitor):
 
     def __init__(self, vars, nodes):
         self.target_vars = vars
         self.loops = nodes
-        self.expressions = [[]] * len(nodes)
+        self.reach_definition = []
+        self.loop_reach_definition = [[]] * len(nodes)
         self.expressions_after = [[]] * len(nodes)
-        self.loop_reached = [False] * len(nodes)
         self.index = 0
 
-    def add_exp(self, expression):
-        assert (isinstance(expression, pc.Decl))
-        name = expression.name
-        temp = []
-        for exp in self.expressions[self.index]:
-            if not exp.name == name:
-                temp.append(exp)
-        temp.append(expression)
-        self.expressions[self.index] = temp[:]
-
-    # def visit_TypeDecl(self, decl):
-    #     if decl.declname in self.target_vars:
-    #         self.expressions.append(decl)
-    #         decl.show()
     def visit_For(self, For):
-        self.loop_reached = True
+        temp = []
+        for exp in self.reach_definition:
+            if isinstance(exp, pc.Decl):
+                if exp.name in self.target_vars[self.index]:
+                    temp.append(exp)
+            elif isinstance(exp, pc.Assignment):
+                if exp.lvalue.name in self.target_vars[self.index]:
+                    temp.append(exp)
+        self.loop_reach_definition[self.index] = temp[:]
+        self.index += 1
+        self.generic_visit(For)
+
+    def visit_While(self, While):
+        temp = []
+        for exp in self.reach_definition:
+            if isinstance(exp, pc.Decl):
+                if exp.name in self.target_vars[self.index]:
+                    temp.append(exp)
+            elif isinstance(exp, pc.Assignment):
+                if exp.lvalue.name in self.target_vars[self.index]:
+                    temp.append(exp)
+        self.loop_reach_definition[self.index] = temp[:]
+        self.index += 1
+        self.generic_visit(While)
 
     def visit_Decl(self, decl):
-        # if isinstance(decl.type, pc.FuncDecl):
-        #     print(decl.type)
-        if not isinstance(decl.type, pc.FuncDecl) \
-                and decl.name in self.target_vars \
-                and not self.loop_reached:
-            self.expressions.append(decl)
-            #decl.show()
+        if not isinstance(decl.type, pc.FuncDecl):
+            name = decl.name
+            temp = []
+            for exp in self.reach_definition:
+                if isinstance(exp, pc.Decl):
+                    if exp.name != name:
+                        temp.append(exp)
+                elif isinstance(exp, pc.Assignment):
+                    if exp.lvalue.name != name:
+                        temp.append(exp)
+            temp.append(decl)
+            self.reach_definition = temp[:]
 
-        if not isinstance(decl.type, pc.FuncDecl) \
-                and decl.name in self.target_vars \
-                and self.loop_reached:
-            self.expressions_after.append(decl)
-            decl.show()
+    def visit_Assignment(self, assign):
+        name = assign.lvalue.name
+        temp = []
+        for exp in self.reach_definition:
+            if isinstance(exp, pc.Decl):
+                if exp.name != name:
+                    temp.append(exp)
+            elif isinstance(exp, pc.Assignment):
+                if exp.lvalue.name != name:
+                    temp.append(exp)
+        temp.append(assign)
+        for t in temp:
+            t.show()
+        self.reach_definition = temp[:]
+
+    class LiveVarAn(NodeVisitor):
+
+        def __init__(self, vars, nodes):
+            self.target_vars = vars
+            self.loops = nodes
+            self.live_vars = [[]] * len(nodes)
+            self.passed = [False] * len(nodes)
+
+        def visit_
 
 class FuncVisitor(NodeVisitor):
 
@@ -103,20 +136,23 @@ class FuncVisitor(NodeVisitor):
         self.functions = []
         self.function_nodes = []
         self.function_loop_variables = []
-        self.function_reach_live = []
+        self.function_reach_defs = []
+        self.function_live_vars = []
 
     def visit_FuncDef(self, FuncDecl):
-        self.functions.append([FuncDecl.decl.name,FuncDecl])
+        self.functions.append((FuncDecl.decl.name,FuncDecl))
 
         lv = LoopVisitor()
         lv.visit(FuncDecl)
         self.function_nodes.append(lv.nodes)
-        self.function_loop_variables.append(lv.loop_vars)
+        self.function_loop_variables.append((FuncDecl.decl.name, lv.loop_vars))
 
         rl = LoopReach(lv.loop_vars, lv.nodes)
         rl.visit(FuncDecl)
-        combination = [rl.expressions, rl.expressions_after]
-        self.function_reach_live.append(combination)
+        # combination = [rl.loop_reach_definition, rl.expressions_after]
+        self.function_reach_defs.append(rl.loop_reach_definition)
+        self.function_live_vars.append(rl.expressions_after)
+
 
 
 
@@ -128,7 +164,18 @@ if __name__ == '__main__':
     print("functions: {}".format(n_vist.functions))
     print("loops    : {}".format(n_vist.function_nodes))
     print("loop vars: {}".format(n_vist.function_loop_variables))
-    print("loop reach vars: {}".format(n_vist.function_reach_live))
+    print("loop reach vars: {}".format(n_vist.function_reach_defs))
+    for function in n_vist.function_reach_defs:
+        print("f")
+        for loop in function:
+            print('l')
+            for exp in loop:
+                if isinstance(exp, pc.Decl):
+                    print('Decl: {} = {}'.format(exp.name, exp.init.value))
+                elif isinstance(exp, pc.Assignment):
+                    print('Asgn: {}'.format(exp.lvalue.name))
+
+    # ast.show()
 
     # loop_var_reach = LoopReach(n_vist.loop_vars, n_vist.nodes)
     # loop_var_reach.visit(ast)
