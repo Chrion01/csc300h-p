@@ -116,19 +116,50 @@ class LoopReach(NodeVisitor):
                 if exp.lvalue.name != name:
                     temp.append(exp)
         temp.append(assign)
-        for t in temp:
-            t.show()
         self.reach_definition = temp[:]
 
-    class LiveVarAn(NodeVisitor):
+class LiveVarAn(NodeVisitor):
 
-        def __init__(self, vars, nodes):
-            self.target_vars = vars
-            self.loops = nodes
-            self.live_vars = [[]] * len(nodes)
-            self.passed = [False] * len(nodes)
+    def __init__(self, vars, nodes):
+        self.target_vars = vars
+        self.loops = nodes
+        self.live_vars = [[]] * len(nodes)
+        self.passed = [False] * len(nodes)
+        self.index = -1
 
-        def visit_
+    def visit_For(self,node):
+        self.generic_visit(node)
+        self.index += 1
+
+    def visit_While(self, node):
+        self.generic_visit(node)
+        self.index += 1
+
+    def visit_BinaryOp(self, binaryOp):
+        if isinstance(binaryOp.right, pc.ID) and binaryOp.right.name in self.live_vars[self.index]:
+            if not binaryOp.right.name in self.values:
+                self.values.append(binaryOp.right.name)
+        if isinstance(binaryOp.left, pc.ID) and not (binaryOp.left.name in self.decls):
+            if not binaryOp.left.name in self.values:
+                self.values.append(binaryOp.left.name)
+        else:
+            self.visit(binaryOp.left)
+            self.visit(binaryOp.right)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    # def visit_
 
 class FuncVisitor(NodeVisitor):
 
@@ -138,6 +169,7 @@ class FuncVisitor(NodeVisitor):
         self.function_loop_variables = []
         self.function_reach_defs = []
         self.function_live_vars = []
+
 
     def visit_FuncDef(self, FuncDecl):
         self.functions.append((FuncDecl.decl.name,FuncDecl))
@@ -175,7 +207,7 @@ if __name__ == '__main__':
                 elif isinstance(exp, pc.Assignment):
                     print('Asgn: {}'.format(exp.lvalue.name))
 
-    # ast.show()
+    ast.show()
 
     # loop_var_reach = LoopReach(n_vist.loop_vars, n_vist.nodes)
     # loop_var_reach.visit(ast)
