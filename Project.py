@@ -126,30 +126,41 @@ class LiveVarAn(NodeVisitor):
         self.live_vars = [[]] * len(nodes)
         self.passed = [False] * len(nodes)
         self.index = -1
+        self.loop_count = len(nodes)
+        
 
     def visit_For(self,node):
         self.generic_visit(node)
         self.index += 1
+        self.passed[self.index] = True
 
     def visit_While(self, node):
         self.generic_visit(node)
         self.index += 1
+        self.passed[self.index] = True        
 
     def visit_BinaryOp(self, binaryOp):
-        if(self.index !=-1):
+        if(self.index != -1):
             if isinstance(binaryOp.right, pc.ID):
-                for i in range(0,self.index+1):
-                    for var in  self.target_vars[i]:
-                        if(var == binaryOp.right.name):
-                            self.live_vars[i].append(var)
+                for i in range(self.loop_count):
+                    if self.passed[i]:
+                        if binaryOp.right.name in self.target_vars[i]:
+                            temp = self.live_vars[i][:]
+                            temp.append(binaryOp.right.name)
+                            self.live_vars[i] = temp[:]
+                            self.target_vars[i].remove(binaryOp.right.name)
+            else:
+                self.visit(binaryOp.right)
             if isinstance(binaryOp.left, pc.ID):
-                for i in range(0,self.index+1):
-                    for var in  self.target_vars[i]:
-                        if(var == binaryOp.left.name):
-                            self.live_vars[i].append(var)
+                for i in range(self.loop_count):
+                    if self.passed[i]:
+                        if binaryOp.left.name in self.target_vars[i]:
+                            temp = self.live_vars[i][:]
+                            temp.append(binaryOp.left.name)
+                            self.live_vars[i] = temp[:]
+                            self.target_vars[i].remove(binaryOp.left.name)
             else:
                 self.visit(binaryOp.left)
-                self.visit(binaryOp.right)
 
     def visit_Assignment(self,node):
         if(self.index != -1):
@@ -159,17 +170,28 @@ class LiveVarAn(NodeVisitor):
                     #     if (var == node.rvalue.name):
                     #         self.live_vars[i].append(var)
                     if node.rvalue.name in self.target_vars[i]:
-                        self.live_vars[i].append(node.rvalue.name)
+                        temp = self.live_vars[i][:]
+                        
+                        temp.append(node.rvalue.name)
+                        self.live_vars[i] = temp[:]
             else:
-                self.visit(node.rvalue)
-    
-            if isinstance(node.lvalue, pc.ID):
-                for i in range(0, self.index + 1):
-                    temp = []
-                    for var in self.target_vars[i]:
-                        if (var != node.lvalue.name):
-                            temp.append(var)
-                    self.target_vars[i] = temp[:]
+                self.visit(node.rvalue)            
+            if node.op == '=':          
+                if isinstance(node.lvalue, pc.ID):
+                    for i in range(0, self.index + 1):
+                        temp = []
+                        for var in self.target_vars[i]:
+                            if (var != node.lvalue.name):
+                                temp.append(var)
+                        self.target_vars[i] = temp[:]
+            else:
+                if isinstance(node.lvalue, pc.ID):
+                    for i in range(self.loop_count): 
+                        if self.passed[i] and node.lvalue.name in self.target_vars[i]:
+                            temp = self.live_vars[i][:]
+                            temp.append(node.lvalue.name)
+                            self.live_vars[i] = temp[:]
+                            self.target_vars[i].remove(node.lvalue.name)
 
     def visit_Decl(self,node):
         if(self.index != -1):
@@ -178,7 +200,13 @@ class LiveVarAn(NodeVisitor):
                     for i in range(0, self.index + 1):
                         for var in self.target_vars[i]:
                             if (var == node.init.name):
-                                self.live_vars[i].append(node.init.name)
+                                print("DeclRight",node.init.name,i) 
+                                print("before",self.live_vars)
+                                temp = self.live_vars[i][:]
+                        
+                                temp.append(node.rvalue.name)
+                                self.live_vars[i] = temp[:]
+                                print("after",self.live_vars)                                
                 elif isinstance(node.init, pc.Constant):
                     pass
                 else:
@@ -224,9 +252,9 @@ class FuncVisitor(NodeVisitor):
         # combination = [rl.loop_reach_definition, rl.expressions_after]
         self.function_reach_defs.append(rl.loop_reach_definition)
 
-        lva = LiveVarAn(lv.loop_vars, lv.nodes)
+        lva = LiveVarAn(lv.loop_vars[:], lv.nodes[:])
         lva.visit(FuncDecl)
-        self.function_live_vars.append(lva.live_vars)
+        self.function_live_vars.append(lva.live_vars[:])
 
 
 
