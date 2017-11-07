@@ -7,7 +7,8 @@ import sys
 suite = unittest.TestLoader().loadTestsFromNames(
     [
         'test_c_ast_to_minic',
-        'test_nodevisitors'
+        'test_nodevisitors',
+        'test_analysis'
     ]
 )
 

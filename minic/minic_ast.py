@@ -132,7 +132,7 @@ class ArrayDecl(Node):
         if self.dim is not None: nodelist.append(("dim", self.dim))
         return tuple(nodelist)
 
-    attr_names = ('dim_quals', )
+    attr_names = ()
 
 
 class ArrayRef(Node):
@@ -150,6 +150,9 @@ class ArrayRef(Node):
 
     attr_names = ()
 
+    def __str__(self):
+        return "%s[%s]" % (self.name, self.subscript)
+
 
 class Assignment(Node):
     __slots__ = ('lvalue', 'rvalue', 'coord', '__weakref__')
@@ -164,6 +167,11 @@ class Assignment(Node):
         if self.lvalue is not None: nodelist.append(("lvalue", self.lvalue))
         if self.rvalue is not None: nodelist.append(("rvalue", self.rvalue))
         return tuple(nodelist)
+    
+    attr_names = ()
+
+    def __str__(self):
+        return "%s = %s" % (self.lvalue, self.rvalue)
 
 
 class BinaryOp(Node):
@@ -180,6 +188,9 @@ class BinaryOp(Node):
         if self.left is not None: nodelist.append(("left", self.left))
         if self.right is not None: nodelist.append(("right", self.right))
         return tuple(nodelist)
+
+    def __str__(self):
+        return "(%s %s %s)" % (self.left, self.op, self.right)
 
     attr_names = ('op', )
 
@@ -200,6 +211,7 @@ class Block(Node):
     attr_names = ()
 
 
+
 class Constant(Node):
     __slots__ = ('type', 'value', 'coord', '__weakref__')
 
@@ -214,6 +226,8 @@ class Constant(Node):
 
     attr_names = ('type', 'value', )
 
+    def __str__(self):
+        return "%s" % self.value
 
 class Decl(Node):
     __slots__ = ('name', 'funcspec', 'type', 'init', 'coord', '__weakref__')
@@ -233,6 +247,11 @@ class Decl(Node):
 
     attr_names = ('name', 'funcspec', )
 
+    def __str__(self):
+        if self.init is not None:
+            return "%s %s = %s" % (self.type, self.name, self.init)
+        else:
+            return "%s %s" % (self.type, self.name)
 
 class DeclList(Node):
     __slots__ = ('decls', 'coord', '__weakref__')
@@ -248,6 +267,9 @@ class DeclList(Node):
         return tuple(nodelist)
 
     attr_names = ()
+
+    def __str__(self):
+        return "(%s)" % ", ".join(list(map(str, self.decls)))
 
 
 
@@ -293,6 +315,9 @@ class ExprList(Node):
         return tuple(nodelist)
 
     attr_names = ()
+
+    def __str__(self):
+        return "%s" % ", ".join(list(map(str, self.exprs)))
 
 
 class FileAST(Node):
@@ -348,6 +373,12 @@ class FuncCall(Node):
 
     attr_names = ()
 
+    def __str__(self):
+        if self.args is not None:
+            return "%s(%s)" % (self.name, self.args)
+        else:
+            return "%s()" % self.name
+
 
 class FuncDecl(Node):
     __slots__ = ('args', 'type', 'coord', '__weakref__')
@@ -399,6 +430,8 @@ class ID(Node):
 
     attr_names = ('name', )
 
+    def __str__(self):
+        return self.name
 
 class IdentifierType(Node):
     __slots__ = ('names', 'coord', '__weakref__')
@@ -411,6 +444,12 @@ class IdentifierType(Node):
         return tuple(nodelist)
 
     attr_names = ('names', )
+
+    def __str__(self):
+        if len(self.names) == 1:
+            return "%s" % self.names[0]
+        else:
+            return "%s" % " ".join(list(map(str, self.names)))
 
 
 class If(Node):
@@ -496,6 +535,9 @@ class ParamList(Node):
 
     attr_names = ()
 
+    def __str__(self):
+        return "(%s)" % ", ".join(list(map(str, self.params)))
+
 
 class PtrDecl(Node):
     __slots__ = ('type', 'coord', '__weakref__')
@@ -511,6 +553,9 @@ class PtrDecl(Node):
 
     attr_names = ('quals', )
 
+    def __str__(self):
+        return "%s*" % self.type
+
 
 class Return(Node):
     __slots__ = ('expr', 'coord', '__weakref__')
@@ -525,6 +570,9 @@ class Return(Node):
         return tuple(nodelist)
 
     attr_names = ()
+
+    def __str__(self):
+        return "return %s;" % self.expr
 
 
 class TernaryOp(Node):
@@ -545,6 +593,9 @@ class TernaryOp(Node):
 
     attr_names = ()
 
+    def __str__(self):
+        return "%s ? %s : %s" % (self.cond, self.iftrue, self.iffalse)
+
 
 class Typename(Node):
     __slots__ = ('name', 'type', 'coord', '__weakref__')
@@ -560,6 +611,9 @@ class Typename(Node):
         return tuple(nodelist)
 
     attr_names = ('name', )
+
+    def __str__(self):
+        return "%s" % self.type
 
 
 class TypeDecl(Node):
@@ -577,6 +631,9 @@ class TypeDecl(Node):
 
     attr_names = ('name', )
 
+    def __str__(self):
+        return "%s" % self.type
+
 
 class UnaryOp(Node):
     __slots__ = ('op', 'expr', 'coord', '__weakref__')
@@ -592,6 +649,9 @@ class UnaryOp(Node):
         return tuple(nodelist)
 
     attr_names = ('op', )
+
+    def __str__(self):
+        return "%s%s" % (self.op, self.expr)
 
 
 class Union(Node):
@@ -628,99 +688,3 @@ class While(Node):
     attr_names = ()
 
 
-
-
-# class ArrayDecl(Node):
-#     __slots__ = ('type', 'dim', 'dim_quals', 'coord', '__weakref__')
-# class ArrayRef(Node):
-#     __slots__ = ('name', 'subscript', 'coord', '__weakref__')
-# class Assignment(Node):
-#     __slots__ = ('op', 'lvalue', 'rvalue', 'coord', '__weakref__')
-# class BinaryOp(Node):
-#     __slots__ = ('op', 'left', 'right', 'coord', '__weakref__')
-# class Break(Node):
-#     __slots__ = ('coord', '__weakref__')
-# class Case(Node):
-#     __slots__ = ('expr', 'stmts', 'coord', '__weakref__')
-# class Cast(Node):
-#     __slots__ = ('to_type', 'expr', 'coord', '__weakref__')
-# class Compound(Node):
-#     __slots__ = ('block_items', 'coord', '__weakref__')
-# class CompoundLiteral(Node):
-#     __slots__ = ('type', 'init', 'coord', '__weakref__')
-# class Constant(Node):
-#     __slots__ = ('type', 'value', 'coord', '__weakref__')
-# class Continue(Node):
-#     __slots__ = ('coord', '__weakref__')
-# class Decl(Node):
-#     __slots__ = ('name', 'quals', 'storage', 'funcspec', 'type', 'init', 'bitsize', 'coord', '__weakref__')
-# class DeclList(Node):
-#     __slots__ = ('decls', 'coord', '__weakref__')
-# class Default(Node):
-#     __slots__ = ('stmts', 'coord', '__weakref__')
-# class DoWhile(Node):
-#     __slots__ = ('cond', 'stmt', 'coord', '__weakref__')
-# class EllipsisParam(Node):
-#     __slots__ = ('coord', '__weakref__')
-# class EmptyStatement(Node):
-#     __slots__ = ('coord', '__weakref__')
-# class Enum(Node):
-#     __slots__ = ('name', 'values', 'coord', '__weakref__')
-# class Enumerator(Node):
-#     __slots__ = ('name', 'value', 'coord', '__weakref__')
-# class EnumeratorList(Node):
-#     __slots__ = ('enumerators', 'coord', '__weakref__')
-# class ExprList(Node):
-#     __slots__ = ('exprs', 'coord', '__weakref__')
-# class FileAST(Node):
-#     __slots__ = ('ext', 'coord', '__weakref__')
-# class For(Node):
-#     __slots__ = ('init', 'cond', 'next', 'stmt', 'coord', '__weakref__')
-# class FuncCall(Node):
-#     __slots__ = ('name', 'args', 'coord', '__weakref__')
-# class FuncDecl(Node):
-#     __slots__ = ('args', 'type', 'coord', '__weakref__')
-# class FuncDef(Node):
-#     __slots__ = ('decl', 'param_decls', 'body', 'coord', '__weakref__')
-# class Goto(Node):
-#     __slots__ = ('name', 'coord', '__weakref__')
-# class ID(Node):
-#     __slots__ = ('name', 'coord', '__weakref__')
-# class IdentifierType(Node):
-#     __slots__ = ('names', 'coord', '__weakref__')
-# class If(Node):
-#     __slots__ = ('cond', 'iftrue', 'iffalse', 'coord', '__weakref__')
-# class InitList(Node):
-#     __slots__ = ('exprs', 'coord', '__weakref__')
-# class Label(Node):
-#     __slots__ = ('name', 'stmt', 'coord', '__weakref__')
-# class NamedInitializer(Node):
-#     __slots__ = ('name', 'expr', 'coord', '__weakref__')
-# class ParamList(Node):
-#     __slots__ = ('params', 'coord', '__weakref__')
-# class PtrDecl(Node):
-#     __slots__ = ('quals', 'type', 'coord', '__weakref__')
-# class Return(Node):
-#     __slots__ = ('expr', 'coord', '__weakref__')
-# class Struct(Node):
-#     __slots__ = ('name', 'decls', 'coord', '__weakref__')
-# class StructRef(Node):
-#     __slots__ = ('name', 'type', 'field', 'coord', '__weakref__')
-# class Switch(Node):
-#     __slots__ = ('cond', 'stmt', 'coord', '__weakref__')
-# class TernaryOp(Node):
-#     __slots__ = ('cond', 'iftrue', 'iffalse', 'coord', '__weakref__')
-# class TypeDecl(Node):
-#     __slots__ = ('declname', 'quals', 'type', 'coord', '__weakref__')
-# class Typedef(Node):
-#     __slots__ = ('name', 'quals', 'storage', 'type', 'coord', '__weakref__')
-# class Typename(Node):
-#     __slots__ = ('name', 'quals', 'type', 'coord', '__weakref__')
-# class UnaryOp(Node):
-#     __slots__ = ('op', 'expr', 'coord', '__weakref__')
-# class Union(Node):
-#     __slots__ = ('name', 'decls', 'coord', '__weakref__')
-# class While(Node):
-#     __slots__ = ('cond', 'stmt', 'coord', '__weakref__')
-# class Pragma(Node):
-#     __slots__ = ('string', 'coord', '__weakref__')

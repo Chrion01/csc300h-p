@@ -20,7 +20,7 @@ class TestVisitor(mast.NodeVisitor):
 
 class TestNodeVisit(unittest.TestCase):
     def test_visit(self):
-        ast = ctoc.t(parse_file('./c_files/minic.c'))
+        ast = ctoc.transform(parse_file('./c_files/minic.c'))
         vs = TestVisitor()
         vs.visit(ast)
         self.assertEqual(vs.assignment_counter, 5)
