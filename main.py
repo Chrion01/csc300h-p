@@ -332,7 +332,6 @@ class Loop():
     def __str__(self):
         defs = []
         for item in self.reach_defs:
-            print(str(item))
             defs.append(transform(item).__str__())
 
         statement = "Read Variables: {}\n".format(self.read_variables) + \
@@ -370,7 +369,7 @@ if __name__ == '__main__':
     #             elif isinstance(exp, pc.Assignment):
     #                 print('Asgn: {}'.format(exp.lvalue.name))
 
-    ast.show()
+    # ast.show()
 
     # loop_var_reach = LoopReach(n_vist.loop_vars, n_vist.nodes)
     # loop_var_reach.visit(ast)
