@@ -126,70 +126,103 @@ class LiveVarAn(NodeVisitor):
         self.live_vars = [[]] * len(nodes)
         self.passed = [False] * len(nodes)
         self.index = -1
+        self.loop_count = len(nodes)
+        
 
     def visit_For(self,node):
         self.generic_visit(node)
         self.index += 1
+        self.passed[self.index] = True
 
     def visit_While(self, node):
         self.generic_visit(node)
         self.index += 1
+        self.passed[self.index] = True        
 
     def visit_BinaryOp(self, binaryOp):
-        if isinstance(binaryOp.right, pc.ID):
-            for i in range(0,self.index+1):
-                if binaryOp.right.name in self.target_vars[i]:
-                    self.live_vars[i].append(binaryOp.right.name)
-        else:
-            self.visit(binaryOp.right)
-        if isinstance(binaryOp.left, pc.ID):
-            for i in range(0,self.index+1):
-                if binaryOp.left.name in self.target_vars[i]:
-                   self.live_vars[i].append(binaryOp.left.name)
-        else:
-            self.visit(binaryOp.left)
+
+        if(self.index != -1):
+            if isinstance(binaryOp.right, pc.ID):
+                for i in range(self.loop_count):
+                    if self.passed[i]:
+                        if binaryOp.right.name in self.target_vars[i]:
+                            temp = self.live_vars[i][:]
+                            temp.append(binaryOp.right.name)
+                            self.live_vars[i] = temp[:]
+                            self.target_vars[i].remove(binaryOp.right.name)
+            else:
+                self.visit(binaryOp.right)
+            if isinstance(binaryOp.left, pc.ID):
+                for i in range(self.loop_count):
+                    if self.passed[i]:
+                        if binaryOp.left.name in self.target_vars[i]:
+                            temp = self.live_vars[i][:]
+                            temp.append(binaryOp.left.name)
+                            self.live_vars[i] = temp[:]
+                            self.target_vars[i].remove(binaryOp.left.name)
+            else:
+                self.visit(binaryOp.left)
 
     def visit_Assignment(self,node):
-        if isinstance(node.rvalue, pc.ID):
-            for i in range(0, self.index + 1):
-                # for var in self.target_vars[i]:
-                #     if (var == node.rvalue.name):
-                #         self.live_vars[i].append(var)
-                if node.rvalue.name in self.target_vars[i]:
-                    self.live_vars[i].append(node.rvalue.name)
-        else:
-            self.visit(node.rvalue)
-
-        if isinstance(node.lvalue, pc.ID):
-            for i in range(0, self.index + 1):
-                temp = []
-                for var in self.target_vars[i]:
-                    if (var != node.lvalue.name):
-                        temp.append(var)
-                self.target_vars[i] = temp[:]
+        if(self.index != -1):
+            if isinstance(node.rvalue, pc.ID):
+                for i in range(0, self.index + 1):
+                    # for var in self.target_vars[i]:
+                    #     if (var == node.rvalue.name):
+                    #         self.live_vars[i].append(var)
+                    if node.rvalue.name in self.target_vars[i]:
+                        temp = self.live_vars[i][:]
+                        
+                        temp.append(node.rvalue.name)
+                        self.live_vars[i] = temp[:]
+            else:
+                self.visit(node.rvalue)            
+            if node.op == '=':          
+                if isinstance(node.lvalue, pc.ID):
+                    for i in range(0, self.index + 1):
+                        temp = []
+                        for var in self.target_vars[i]:
+                            if (var != node.lvalue.name):
+                                temp.append(var)
+                        self.target_vars[i] = temp[:]
+            else:
+                if isinstance(node.lvalue, pc.ID):
+                    for i in range(self.loop_count): 
+                        if self.passed[i] and node.lvalue.name in self.target_vars[i]:
+                            temp = self.live_vars[i][:]
+                            temp.append(node.lvalue.name)
+                            self.live_vars[i] = temp[:]
+                            self.target_vars[i].remove(node.lvalue.name)
 
     def visit_Decl(self,node):
-        if not isinstance(node.type, pc.FuncDecl) and not isinstance(node.type, pc.PtrDecl):
-            if isinstance(node.init, pc.ID):
+        if(self.index != -1):
+            if not isinstance(node.type, pc.FuncDecl) and not isinstance(node.type, pc.PtrDecl):
+                if isinstance(node.init, pc.ID):
+                    for i in range(0, self.index + 1):
+                        for var in self.target_vars[i]:
+                            if (var == node.init.name):
+                                print("DeclRight",node.init.name,i) 
+                                print("before",self.live_vars)
+                                temp = self.live_vars[i][:]
+                        
+                                temp.append(node.rvalue.name)
+                                self.live_vars[i] = temp[:]
+                                print("after",self.live_vars)                                
+                elif isinstance(node.init, pc.Constant):
+                    pass
+                else:
+                    self.visit(node.init)
+    
+            if isinstance(node.name, pc.ID):
                 for i in range(0, self.index + 1):
+                    temp = []
                     for var in self.target_vars[i]:
-                        if (var == node.init.name):
-                            self.live_vars[i].append(node.init.name)
-            elif isinstance(node.init, pc.Constant):
-                pass
-            else:
-                self.visit(node.init)
-
-        if isinstance(node.name, pc.ID):
-            for i in range(0, self.index + 1):
-                temp = []
-                for var in self.target_vars[i]:
-                    if (var != node.name):
-                        temp.append(var)
-                self.target_vars[i] = temp[:]
-
-
-
+                        if (var != node.name):
+                            temp.append(var)
+                    self.target_vars[i] = temp[:]
+    
+    
+    
 
 
 
@@ -220,9 +253,9 @@ class FuncVisitor(NodeVisitor):
         # combination = [rl.loop_reach_definition, rl.expressions_after]
         self.function_reach_defs.append(rl.loop_reach_definition)
 
-        lv = LiveVarAn(lv.loop_vars, lv.nodes)
-        lv.visit(FuncDecl)
-        self.function_live_vars.append(lv.live_vars)
+        lva = LiveVarAn(lv.loop_vars[:], lv.nodes[:])
+        lva.visit(FuncDecl)
+        self.function_live_vars.append(lva.live_vars[:])
 
 
 
@@ -257,4 +290,3 @@ if __name__ == '__main__':
 
     #loop_var_reach.expressions[0].show()
 
-    exit(0)
