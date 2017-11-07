@@ -138,17 +138,16 @@ class LiveVarAn(NodeVisitor):
     def visit_BinaryOp(self, binaryOp):
         if isinstance(binaryOp.right, pc.ID):
             for i in range(0,self.index+1):
-                for var in  self.target_vars[i]:
-                    if(var == binaryOp.right.name):
-                       self.live_vars[i].append(var)
+                if binaryOp.right.name in self.target_vars[i]:
+                    self.live_vars[i].append(binaryOp.right.name)
+        else:
+            self.visit(binaryOp.right)
         if isinstance(binaryOp.left, pc.ID):
             for i in range(0,self.index+1):
-                for var in  self.target_vars[i]:
-                    if(var == binaryOp.left.name):
-                       self.live_vars[i].append(var)
+                if binaryOp.left.name in self.target_vars[i]:
+                   self.live_vars[i].append(binaryOp.left.name)
         else:
             self.visit(binaryOp.left)
-            self.visit(binaryOp.right)
 
     def visit_Assignment(self,node):
         if isinstance(node.rvalue, pc.ID):
