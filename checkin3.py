@@ -175,6 +175,16 @@ class DependenceCalc(NodeVisitor):
         dep_vector = []
         for i in range(num):
             dep_vector.append(left_vector[i]-right_vector[i])
+
+        # lex. pos. check
+        pos = True
+        first_neg = False
+        for x in dep_vector:
+            if x < 0 and not first_neg:
+                first_neg = True
+            elif x >= 0 and first_neg:
+                pos = False
+                break
         return dep_vector
 
     # DEPRECATED BY dep_vector_cal
@@ -224,7 +234,7 @@ class DependenceCalc(NodeVisitor):
 
 
 if __name__ == '__main__':
-    ast = parse_file('./tests/c_files/p1_input7.c')
+    ast = parse_file('./tests/c_files/more.c')
     l_f = TopLoopFinder()
     l_f.visit(ast)
     ast.show()
