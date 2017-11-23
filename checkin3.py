@@ -234,7 +234,7 @@ class DependenceCalc(NodeVisitor):
 
 
 if __name__ == '__main__':
-    ast = parse_file('./tests/c_files/more.c')
+    ast = parse_file('./tests/c_files/checkin4_ex.c')
     l_f = TopLoopFinder()
     l_f.visit(ast)
     ast.show()
