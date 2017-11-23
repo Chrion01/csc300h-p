@@ -177,15 +177,31 @@ class DependenceCalc(NodeVisitor):
             dep_vector.append(left_vector[i]-right_vector[i])
 
         # lex. pos. check
-        pos = True
+        self.lexicographically_positive(dep_vector)
+
+        # incase of past.
+        in_past = False
+        for i in range(1, num):
+            if dep_vector[i - 1] > 0:
+                in_past = True
+                break
+            if (not in_past) and dep_vector[i] < 0 and dep_vector[i - 1] == 0:
+                dep_vector[i - 1] += 1
+                break
+        return dep_vector
+
+    def lexicographically_positive(self, vector):
+        positive = True
         first_neg = False
-        for x in dep_vector:
+        if vector[0] < 0:
+            return False
+        for x in vector:
             if x < 0 and not first_neg:
                 first_neg = True
             elif x >= 0 and first_neg:
-                pos = False
+                positive = False
                 break
-        return dep_vector
+        return positive
 
     # DEPRECATED BY dep_vector_cal
     #
