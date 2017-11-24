@@ -118,6 +118,11 @@ class DependenceCalc(NodeVisitor):
         return
 
     def array_index_converter(self, arrayRef):
+        """Converts ArrayRef into usable format
+
+        :param arrayRef: ArrayRef
+        :return (str, list): pair of array name and list of its indexes in subscript_handler format. Indexes in order
+        """
         # returns array refs in format (name, [subscripts])
         name = ''
         subsc = []
@@ -132,10 +137,14 @@ class DependenceCalc(NodeVisitor):
 
         return (name, subsc)
 
+    @staticmethod
+    def subscript_handler(subscript):
+        """Returns formated version of arrayRef subscripts
 
-    def subscript_handler(self, subscript):
-        # gets operation and value from array subscripts
-        # returns (variable name, operator, constant) or None if not in x + 1 or 1 - x format.
+        Assumes subscript is in [ID +/- integer], [integer +/- ID], or [ID] format
+        :param subscript: ArrayRef.subscript
+        :return list[str, str, int]: [variable name, binary operation, |offset from 0|]
+        """
         if isinstance(subscript, pc.ID):
             return [subscript.name, '+', 0]
         elif isinstance(subscript, pc.BinaryOp):
@@ -147,9 +156,14 @@ class DependenceCalc(NodeVisitor):
             return None
 
     def dep_vector_cal(self, left, right):
-        # input assignment lvalue in array index converter format
-        #                   rvalue in array index converter format
-        # returns dependency vector of left to right
+        """ Calculates dependency vector
+
+        Uses class index_vector to determine ordering of array indexes
+
+        :param left: ArrayRef on lefthand side of assignment statement in array_index_converter format
+        :param right: ArrayRef on righthand side of assignment statement in array_index_converter format
+        :return list of int: Dependency vector of right to left
+        """
 
         num = len(self.index_vector)
         left_vector = [0] * num
@@ -177,31 +191,30 @@ class DependenceCalc(NodeVisitor):
             dep_vector.append(left_vector[i]-right_vector[i])
 
         # lex. pos. check
-        self.lexicographically_positive(dep_vector)
+        positive, position = self.lexicographically_positive(dep_vector)
+        if positive and position != -1:
+            if dep_vector[position] == 0:
+                dep_vector[position] += 1
 
-        # incase of past.
-        in_past = False
-        for i in range(1, num):
-            if dep_vector[i - 1] > 0:
-                in_past = True
-                break
-            if (not in_past) and dep_vector[i] < 0 and dep_vector[i - 1] == 0:
-                dep_vector[i - 1] += 1
-                break
         return dep_vector
 
-    def lexicographically_positive(self, vector):
-        positive = True
-        first_neg = False
+    @staticmethod
+    def lexicographically_positive(vector):
+        """Determine lexicographical positivity and returns position of last value
+
+        Returns position of last value >= 0 prior to the first negative value
+        - If not lex. pos. returns False, 0
+        - If there are no negative values, returns True, -1
+        :param vector: Vector should be greater than length 1
+        :return boolean, int:
+        """
+
         if vector[0] < 0:
-            return False
-        for x in vector:
-            if x < 0 and not first_neg:
-                first_neg = True
-            elif x >= 0 and first_neg:
-                positive = False
-                break
-        return positive
+            return False, 0
+        for x in range(1, len(vector)):
+            if vector[x] < 0:
+                return True, x - 1
+        return True, -1
 
     # DEPRECATED BY dep_vector_cal
     #
