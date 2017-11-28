@@ -11,6 +11,7 @@ class TopLoopFinder(NodeVisitor):
         self.nodes = []
         self.nested = {}
 
+
     def visit_For(self, For):
         self.nodes.append(For)
         f_vis = LoopVisitor()
@@ -20,6 +21,9 @@ class TopLoopFinder(NodeVisitor):
             dv = DependenceCalc(f_vis.index_vector)
             dv.visit(For)
             self.nested[For].append(dv.dependencies)
+            dv.out_dep_calc()
+            self.nested[For].append(dv.anti_deps)
+            self.nested[For].append(dv.out_deps)
 
     def __str__(self):
         res = ""
@@ -30,6 +34,15 @@ class TopLoopFinder(NodeVisitor):
             deps = self.nested[node][1].keys()
             for dep in deps:
                 res += '\t\tStatement {} : D = {}\n'.format(dep, self.nested[node][1][dep])
+            anti_deps = self.nested[node][2]
+            res += '\tAnti Dependences:\n'
+            for ad in anti_deps:
+                res += '\t\t{}\n'.format(ad)
+            out_deps = self.nested[node][3]
+            res += '\tOutward Dependences:\n'
+            for od in out_deps:
+                res += '\t\t{}\n'.format(od)
+
         return res
 
 
@@ -66,13 +79,17 @@ class DependenceCalc(NodeVisitor):
         self.dependencies = {}
         self.index_vector = index_vector
         self.temp_holder = []
-        self.left_side_temp = self.left_side_temp = [0] * len(self.index_vector)
         self.writes = []
         self.reads = {}
+        self.anti_deps = []
+        self.out_deps = []
 
     def visit_Assignment(self, Assign):
         self.temp_holder = []
-        self.left_side_temp = self.left_side_temp = [0] * len(self.index_vector)
+
+
+        self.visit(Assign.rvalue)
+
         if isinstance(Assign.lvalue, pc.ArrayRef):
             l = self.array_index_converter(Assign.lvalue)
             # if l[0] not in self.writes.keys():
@@ -81,14 +98,13 @@ class DependenceCalc(NodeVisitor):
             # else:
             #     self.writes[l[0]].append(l[1].copy())
             self.writes.append(l)
-            self.temp_holder = []
-
-        self.visit(Assign.rvalue)
-
-        if self.temp_holder:
+        else:
+            l = None
+        if self.temp_holder and l:
             self.dependencies[transform(Assign).__str__()] = []
             for res in self.temp_holder:
                 self.dependencies[transform(Assign).__str__()].append(self.dep_vector_cal(l, res))
+        self.anti_dep_calc()
 
     def visit_ArrayRef(self, aRef):
         assert(isinstance(aRef, pc.ArrayRef))
@@ -121,7 +137,8 @@ class DependenceCalc(NodeVisitor):
         """Converts ArrayRef into usable format
 
         :param arrayRef: ArrayRef
-        :return (str, list): pair of array name and list of its indexes in subscript_handler format. Indexes in order
+        :return [str, list, str]: list of array name, list of its indexes in subscript_handler format. Indexes in order
+                                    and a string representation of the original arrayRef
         """
         # returns array refs in format (name, [subscripts])
         name = ''
@@ -134,8 +151,9 @@ class DependenceCalc(NodeVisitor):
         elif isinstance(arrayRef.name, pc.ID):
             name = arrayRef.name.name
         subsc.append(self.subscript_handler(arrayRef.subscript).copy())
+        transform(arrayRef).__str__()
 
-        return (name, subsc)
+        return [name, subsc, transform(arrayRef).__str__()]
 
     @staticmethod
     def subscript_handler(subscript):
@@ -216,6 +234,43 @@ class DependenceCalc(NodeVisitor):
                 return True, x - 1
         return True, -1
 
+    def anti_dep_calc(self):
+        for ref in self.temp_holder:
+            for comp in self.writes:
+                if ref[0] == comp[0]:
+                    if self.bef_aft(comp, ref) == 1:
+                        self.anti_deps.append([comp[2], ref[2]])
+
+        return
+
+    def out_dep_calc(self):
+        for ref in range(len(self.writes)):
+            for comp in range(ref + 1, len(self.writes)):
+                if self.writes[ref][0] == self.writes[comp][0]:
+                    if self.bef_aft(self.writes[ref], self.writes[comp]) == -1:
+                        self.out_deps.append([self.writes[ref][2], self.writes[comp][2]])
+
+        return
+
+    @staticmethod
+    def bef_aft(first, second):
+        """
+
+        :param first:  ArrayRef to be compared against in array_index_converter format
+        :param second: ArrayRef to compare to first in array_index_converter format
+        :return int: -1 if the second is a later iteration, 1 if prior iteration, 0 if same
+        """
+        assert(first[0] == second[0])
+        left = first[1]
+        right = second[1]
+        for i in range(len(left)):
+            if left[i] > right[i]:
+                return 1
+            elif left[i] < right[i]:
+                return -1
+
+        return 0
+
     # DEPRECATED BY dep_vector_cal
     #
     # def writer(self, id, operation, dist):
@@ -263,8 +318,8 @@ class DependenceCalc(NodeVisitor):
 
 
 if __name__ == '__main__':
-    ast = parse_file('./tests/c_files/checkin4_ex.c')
+    ast = parse_file('./tests/c_files/p1_input7.c')
     l_f = TopLoopFinder()
     l_f.visit(ast)
-    ast.show()
+    # ast.show()
     print(l_f.__str__())
