@@ -3,6 +3,7 @@ from pycparser import parse_file
 import pycparser.c_ast as pc
 from minic.minic_ast import *
 from minic.c_ast_to_minic import *
+import checkin3
 
 
 class LoopVisitor(NodeVisitor):
@@ -24,6 +25,8 @@ class LoopVisitor(NodeVisitor):
         array_in_mod = FindModifiers(b_vist.array_indexes)
         array_in_mod.visit(For)
         self.array_index.append(array_in_mod.modifiers)
+        for c_name, c  in For.children():
+            self.visit(c)
 
     def visit_While(self, While):
         self.nodes.append(While)
@@ -261,6 +264,15 @@ class LiveVarAn(NodeVisitor):
                         if (var != node.name):
                             temp.append(var)
                     self.target_vars[i] = temp[:]
+
+    def visit_ID(self, node):
+        if self.index != -1:
+            for i in range(0, self.index + 1):
+                if node.name in self.target_vars[i]:
+                    temp = self.live_vars[i][:]
+
+                    temp.append(node.name)
+                    self.live_vars[i] = temp[:]
     
     
 class FindModifiers(NodeVisitor):
@@ -315,19 +327,23 @@ class FuncVisitor(NodeVisitor):
         self.function_live_vars.append(lva.live_vars[:])
 
         for i in range(len(lv.nodes)):
+            dep_c = checkin3.TopLoopFinder()
+            dep_c.visit(lv.nodes[i])
             loop = Loop(lv.nodes[i], lv.reads[i], lv.writes[i],
-                        rl.loop_reach_definition[i], lva.live_vars[i], lv.array_index[i])
+                        rl.loop_reach_definition[i], lva.live_vars[i], lv.array_index[i], dep_c)
             self.loops.append(loop)
 
 
+
 class Loop():
-    def __init__(self, node, reads, writes, defs, live, array_ind):
+    def __init__(self, node, reads, writes, defs, live, array_ind, deps):
         self.node = node
         self.read_variables = reads
         self.write_variables = writes
         self.reach_defs = defs
         self.live_vars = live
         self.array_ind = array_ind
+        self.dependencies = deps
 
     def __str__(self):
         defs = []
@@ -342,6 +358,7 @@ class Loop():
             statement += "Array Index Var {}\n".format(key)
             for item in self.array_ind[key]:
                 statement += "{}\n".format(transform(item).__str__())
+        statement += self.dependencies.__str__()
 
 
         return statement

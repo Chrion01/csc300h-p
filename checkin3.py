@@ -150,10 +150,14 @@ class DependenceCalc(NodeVisitor):
 
         elif isinstance(arrayRef.name, pc.ID):
             name = arrayRef.name.name
-        subsc.append(self.subscript_handler(arrayRef.subscript).copy())
-        transform(arrayRef).__str__()
+        try:
+            subsc.append(self.subscript_handler(arrayRef.subscript).copy())
+            transform(arrayRef).__str__()
 
-        return [name, subsc, transform(arrayRef).__str__()]
+            return [name, subsc, transform(arrayRef).__str__()]
+        except AttributeError:
+            print('Conversion failed for {}'.format(transform(arrayRef).__str__()))
+            return [name, [], transform(arrayRef).__str__()]
 
     @staticmethod
     def subscript_handler(subscript):
@@ -318,7 +322,7 @@ class DependenceCalc(NodeVisitor):
 
 
 if __name__ == '__main__':
-    ast = parse_file('./tests/c_files/p1_input7.c')
+    ast = parse_file('./tests/c_files/p1_input8.c')
     l_f = TopLoopFinder()
     l_f.visit(ast)
     # ast.show()
