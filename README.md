@@ -1,3 +1,3 @@
-Run with python3
+# Run with python3
 
-test.py executes main.py on input files 1 to 8
+test.py executes analysis on input files 1 to 8
