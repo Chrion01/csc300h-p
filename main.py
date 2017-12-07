@@ -25,8 +25,8 @@ class LoopVisitor(NodeVisitor):
         array_in_mod = FindModifiers(b_vist.array_indexes)
         array_in_mod.visit(For)
         self.array_index.append(array_in_mod.modifiers)
-        for c_name, c  in For.children():
-            self.visit(c)
+        # for c_name, c  in For.children():
+        #     self.visit(c)
 
     def visit_While(self, While):
         self.nodes.append(While)
@@ -108,19 +108,26 @@ class LoopReach(NodeVisitor):
         self.loop_reach_definition = [[]] * len(nodes)
         self.expressions_after = [[]] * len(nodes)
         self.index = 0
+        self.nest = False
 
     def visit_For(self, For):
         temp = []
-        for exp in self.reach_definition:
-            if isinstance(exp, pc.Decl):
-                if exp.name in self.target_vars[self.index]:
-                    temp.append(exp)
-            elif isinstance(exp, pc.Assignment):
-                if exp.lvalue.name in self.target_vars[self.index]:
-                    temp.append(exp)
-        self.loop_reach_definition[self.index] = temp[:]
-        self.index += 1
-        self.generic_visit(For)
+        if not self.nest:
+            for exp in self.reach_definition:
+                if isinstance(exp, pc.Decl):
+                    if exp.name in self.target_vars[self.index]:
+                        temp.append(exp)
+                elif isinstance(exp, pc.Assignment):
+                    if exp.lvalue.name in self.target_vars[self.index]:
+                        temp.append(exp)
+            self.loop_reach_definition[self.index] = temp[:]
+            self.index += 1
+            self.nest = True
+            self.generic_visit(For)
+            self.nest = False
+        else:
+            self.generic_visit(For)
+
 
     def visit_While(self, While):
         temp = []
@@ -171,12 +178,19 @@ class LiveVarAn(NodeVisitor):
         self.passed = [False] * len(nodes)
         self.index = -1
         self.loop_count = len(nodes)
+        self.nest = False
         
 
     def visit_For(self,node):
-        self.generic_visit(node)
-        self.index += 1
-        self.passed[self.index] = True
+        if not self.nest:
+            self.nest = True
+            self.generic_visit(node)
+            self.index += 1
+            self.passed[self.index] = True
+            self.nest = False
+        else:
+            self.generic_visit(node)
+
 
     def visit_While(self, node):
         self.generic_visit(node)
@@ -330,13 +344,13 @@ class FuncVisitor(NodeVisitor):
             dep_c = checkin3.TopLoopFinder()
             dep_c.visit(lv.nodes[i])
             loop = Loop(lv.nodes[i], lv.reads[i], lv.writes[i],
-                        rl.loop_reach_definition[i], lva.live_vars[i], lv.array_index[i], dep_c)
+                        rl.loop_reach_definition[i], lva.live_vars[i], lv.array_index[i], dep_c, FuncDecl.decl.name)
             self.loops.append(loop)
 
 
 
 class Loop():
-    def __init__(self, node, reads, writes, defs, live, array_ind, deps):
+    def __init__(self, node, reads, writes, defs, live, array_ind, deps, par=""):
         self.node = node
         self.read_variables = reads
         self.write_variables = writes
@@ -344,13 +358,15 @@ class Loop():
         self.live_vars = live
         self.array_ind = array_ind
         self.dependencies = deps
+        self.par = par
 
     def __str__(self):
         defs = []
         for item in self.reach_defs:
             defs.append(transform(item).__str__())
 
-        statement = "Read Variables: {}\n".format(self.read_variables) + \
+        statement = "In Function: {}\n".format(self.par) +\
+                    "Read Variables: {}\n".format(self.read_variables) + \
                     "Write Variables: {}\n".format(self.write_variables) + \
                     "Reaching Def: {}\n".format(defs) + \
                     "Live Variables: {}\n".format(self.live_vars)
@@ -364,7 +380,11 @@ class Loop():
         return statement
 
 if __name__ == '__main__':
-    ast = parse_file('./tests/c_files/minic.c')
+    if len(sys.argv) > 1:
+        file = sys.argv[1]
+    else:
+        file = './tests/c_files/p1_input6.c'
+    ast = parse_file(file)
 
     n_vist = FuncVisitor()
     n_vist.visit(ast)
@@ -375,6 +395,7 @@ if __name__ == '__main__':
     # print("loop live vars: {}".format(n_vist.function_live_vars))
     for loop in n_vist.loops:
         print(loop)
+
 
     # for function in n_vist.function_reach_defs:
     #     print("f")
