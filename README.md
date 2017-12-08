@@ -18,3 +18,6 @@ Following the guide lines of the weekly checkins, we produced code to do what wa
 4. Combining 2 & 3 results in spending time bringing each other up to speed on changes made and discouraged making changes on their own without consulting the original writer.
 5. Lack of leadership meant issues 2-4 continued throughout the process.
 6. Guidelines issued on Mondays and due on Fridays meant 2 and 5 was more problematic than it was for the assignments. 
+
+## Extra
+Ignore file checkin3_mk2. It is not used and a result of difficulties 3 & 4.
