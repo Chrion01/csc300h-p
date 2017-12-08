@@ -8,7 +8,7 @@ To Run analysis, execute with python3 the main.py file followed by the file name
 # Report
 ## Approach
 
-Following the guide lines of the weekly checkins, we produced code to do what was specified, usually 1 node visitor class per task and a higher level visitor to co-ordinate the results and execution of the tasks. The end result is somewhat hap hazard and difficult to read. 
+Following the guide lines of the weekly checkins, we produced code to do what was specified, usually 1 node visitor class per task and a higher level visitor to co-ordinate the results and execution of the tasks. With each new function, a new node visitor was created and added to the execution of the higher level visitor. The end result is somewhat hap hazard and difficult to read. 
 
 ## Difficulties
 
